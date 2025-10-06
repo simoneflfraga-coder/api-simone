@@ -30,9 +30,9 @@ connection.on("open", () => {
 // ---------------------------------------------------------------------------------------------
 
 customersConnection = connection.model(
-  "Customers",
+  "Curstomers",
   CustomersSchema,
-  "Customers"
+  "Curstomers"
 );
 
 productsConnection = connection.model("Products", ProductsSchema, "Products");
@@ -60,3 +60,4 @@ module.exports = {
   registrationsConnection,
   financialsConnection,
 };
+
