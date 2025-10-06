@@ -16,7 +16,7 @@ let financialsConnection;
 // ---------------------------------------------------------------------------------------------
 
 const connection = mongoose.createConnection(
-  "mongodb+srv://dataramosdb:data13542@cluster.7geoxzu.mongodb.net/data?retryWrites=true&w=majority&appName=Cluster"
+  "mongodb+srv://dataramosdb:data13542@cluster0.pwsrbdd.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0"
 );
 
 connection.on("error", (err) => {
