@@ -26,11 +26,12 @@ Router.get("/:id", async (req, res) => {
 
 //CRIAR
 Router.post("/create", async (req, res) => {
+  console.log("/customer/create - body:", req.body);
   try {
     const { name, telephone, cpf, address, anniversary } = req.body;
 
     // Verificação básica
-    if (!name || !telephone || !cpf) {
+    if (!name || !telephone) {
       return res.status(400).json({ error: "Campos obrigatórios faltando." });
     }
 

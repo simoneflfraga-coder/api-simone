@@ -4,7 +4,7 @@ const CustomersSchema = require("./Models/Customers");
 const ProductsSchema = require("./Models/Products");
 const OrdersSchema = require("./Models/Orders");
 const RegistrationsSchema = require("./Models/Registrations");
-const RegistrationSchema = require("./Models/Registrations");
+// const RegistrationSchema = require("./Models/Registrations");
 const FinancialsSchema = require("./Models/Financials");
 
 let customersConnection;
@@ -16,7 +16,7 @@ let financialsConnection;
 // ---------------------------------------------------------------------------------------------
 
 const connection = mongoose.createConnection(
-  "mongodb+srv://dataramosdb:data13542@cluster0.pwsrbdd.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0"
+  "mongodb+srv://dataramosdb:data13542@cluster.7geoxzu.mongodb.net/data?retryWrites=true&w=majority&appName=Cluster"
 );
 
 connection.on("error", (err) => {
@@ -30,9 +30,9 @@ connection.on("open", () => {
 // ---------------------------------------------------------------------------------------------
 
 customersConnection = connection.model(
-  "Curstomers",
+  "Customers",
   CustomersSchema,
-  "Curstomers"
+  "Customers"
 );
 
 productsConnection = connection.model("Products", ProductsSchema, "Products");
@@ -41,7 +41,7 @@ ordersConnection = connection.model("Orders", OrdersSchema, "Orders");
 
 registrationsConnection = connection.model(
   "Registrations",
-  RegistrationSchema,
+  RegistrationsSchema,
   "Registrations"
 );
 
