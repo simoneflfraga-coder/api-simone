@@ -1,28 +1,48 @@
-const express = require('express');
+const express = require("express");
 const cors = require("cors");
-// const mainRouter = require('./Router/mainRouter');
-const customersRouter = require('./Router/customersRouter');
-const productsRouter = require('./Router/productsRouter');
-const orderRouter = require('./Router/orderRouter');
-const registrationRouter = require('./Router/registrationRouter');
-const financialRouter = require('./Router/financialRouter');
+const cookieParser = require("cookie-parser");
+require("dotenv").config();
 
-require('./Database/connection');
+const customersRouter = require("./Router/customersRouter");
+const productsRouter = require("./Router/productsRouter");
+const orderRouter = require("./Router/orderRouter");
+const registrationRouter = require("./Router/registrationRouter");
+const financialRouter = require("./Router/financialRouter");
+const publicRouter = require("./Router/publicRouter");
+const authRouter = require("./Router/authRouter");
+
+require("./Database/connection");
+
+const ensureAuth = require("./middleware/auth"); // middleware criado
 
 const app = express();
 const port = process.env.PORT || 1354;
 
-app.use(cors());
+const corsOptions = {
+  origin: process.env.FRONTEND_URL, // ou a URL do seu frontend
+  credentials: true,
+};
 
+app.use(cors(corsOptions));
+app.use(cookieParser());
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
-app.use('/customer', customersRouter);
-app.use('/product',  productsRouter);
-app.use('/order',  orderRouter);
-app.use('/registration', registrationRouter);
-app.use('/financial', financialRouter);
+// Rota pública para autenticação
+app.use("/auth", authRouter);
+app.use("/public", publicRouter);
+
+
+// A partir daqui, todas as rotas usam ensureAuth
+app.use(ensureAuth);
+
+// rotas protegidas
+app.use("/customer", customersRouter);
+app.use("/product", productsRouter);
+app.use("/order", orderRouter);
+app.use("/registration", registrationRouter);
+app.use("/financial", financialRouter);
 
 app.listen(port, () => {
-    console.log('Servidor Iniciado na porta ' + port);
+  console.log("Servidor Iniciado na porta " + port);
 });

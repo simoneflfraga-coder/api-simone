@@ -6,12 +6,14 @@ const OrdersSchema = require("./Models/Orders");
 const RegistrationsSchema = require("./Models/Registrations");
 // const RegistrationSchema = require("./Models/Registrations");
 const FinancialsSchema = require("./Models/Financials");
+const UserSchema = require("./Models/Users");
 
 let customersConnection;
 let productsConnection;
 let ordersConnection;
 let registrationsConnection;
 let financialsConnection;
+let usersConnection;
 
 // ---------------------------------------------------------------------------------------------
 
@@ -51,6 +53,8 @@ financialsConnection = connection.model(
   "Financials"
 );
 
+usersConnection = connection.model("Users", UserSchema, "Users");
+
 // ---------------------------------------------------------------------------------------------
 
 module.exports = {
@@ -59,4 +63,5 @@ module.exports = {
   ordersConnection,
   registrationsConnection,
   financialsConnection,
+  usersConnection,
 };

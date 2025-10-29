@@ -37,7 +37,6 @@ Router.post("/create", async (req, res) => {
       installmentsTotal,
       installmentsPaid,
       paid,
-      quantidadeParcela,
     } = req.body;
 
     // Validar e atualizar o estoque
@@ -74,7 +73,6 @@ Router.post("/create", async (req, res) => {
           installmentsTotal,
           installmentsPaid,
           paid,
-          quantidadeParcela,
         },
       ],
       { session }

@@ -1,7 +1,5 @@
 const express = require("express");
-
 const connection = require("../Database/connection");
-
 const Router = express.Router();
 
 //BUSCAR TODOS
