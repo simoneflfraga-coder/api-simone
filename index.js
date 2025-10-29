@@ -19,7 +19,7 @@ const app = express();
 const port = process.env.PORT || 1354;
 
 const corsOptions = {
-  origin: "*",
+  origin: "https://app-sistema.vercel.app",
   credentials: true,
 };
 
@@ -46,4 +46,5 @@ app.use("/financial", financialRouter);
 app.listen(port, () => {
   console.log("Servidor Iniciado na porta " + port);
 });
+
 
