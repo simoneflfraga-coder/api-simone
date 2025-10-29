@@ -19,7 +19,7 @@ const app = express();
 const port = process.env.PORT || 1354;
 
 const corsOptions = {
-  origin: process.env.FRONTEND_URL, // ou a URL do seu frontend
+  origin: "*",
   credentials: true,
 };
 
@@ -46,3 +46,4 @@ app.use("/financial", financialRouter);
 app.listen(port, () => {
   console.log("Servidor Iniciado na porta " + port);
 });
+
