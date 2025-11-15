@@ -19,7 +19,7 @@ const app = express();
 const port = process.env.PORT || 1354;
 
 const corsOptions = {
-  origin: "http://localhost:8080",
+  origin: process.env.FRONTEND_URL || "https://app-sistema.vercel.app",
   credentials: true,
 };
 
@@ -46,5 +46,6 @@ app.use("/financial", financialRouter);
 app.listen(port, () => {
   console.log("Servidor Iniciado na porta " + port);
 });
+
 
 
