@@ -1,6 +1,17 @@
 const mongoose = require("mongoose");
 const Schema = mongoose.Schema;
 
+const installmentSchema = new mongoose.Schema({
+  number: { type: Number, required: true }, // Ex: 1, 2, 3...
+  dueDate: { type: Date, required: true }, // Data de vencimento da parcela
+  amount: { type: Number, required: true }, // Valor da parcela
+  status: {
+    type: String,
+    enum: ["pendente", "pago", "atrasado"],
+    default: "pendente",
+  },
+});
+
 const OrdersSchema = new Schema(
   {
     date: { type: Date, default: Date.now },
@@ -23,8 +34,19 @@ const OrdersSchema = new Schema(
       },
     ],
 
+    vendedora: {
+      type: String,
+      enum: ["Simone", "Isadora", "Fernanda"],
+      required: true,
+    },
+
     totalAmount: { type: Number, required: true, min: 1 },
     price: { type: Number, required: true, min: 0 },
+
+    parcelas: { type: Number, required: true, min: 1 },
+    parcelasPagas: { type: Number, default: 0 },
+
+    installments: { type: [installmentSchema], required: true },
 
     // agora: dia do mês que vence a parcela (1..31)
     installmentsTotal: { type: Number, required: true, min: 1, max: 31 },
@@ -73,7 +95,8 @@ async function updatePaidInUpdate(next) {
 
   // Pega documento atual (precisamos dele para simular alterações)
   const doc = await Model.findOne(query).lean();
-  const currentArray = doc && Array.isArray(doc.paymentHistory) ? doc.paymentHistory.slice() : [];
+  const currentArray =
+    doc && Array.isArray(doc.paymentHistory) ? doc.paymentHistory.slice() : [];
 
   // util helpers
   const toStringId = (v) => (v && v._id ? String(v._id) : String(v || ""));
@@ -92,15 +115,21 @@ async function updatePaidInUpdate(next) {
       const cond = crit[key];
 
       // se cond é operador (ex: { _id: { $in: [...] } })
-      if (cond && typeof cond === "object" && Object.keys(cond).some((k) => k.startsWith("$"))) {
+      if (
+        cond &&
+        typeof cond === "object" &&
+        Object.keys(cond).some((k) => k.startsWith("$"))
+      ) {
         // suportar alguns operadores comuns: $in, $eq, $lt, $lte, $gt, $gte
         if (cond.$in) {
           const vals = cond.$in.map((v) => String(v));
-          if (!vals.includes(String(elem[key] ?? elem[key]?._id ?? ""))) return false;
+          if (!vals.includes(String(elem[key] ?? elem[key]?._id ?? "")))
+            return false;
           continue;
         }
         if (cond.$eq !== undefined) {
-          if (String(elem[key] ?? elem[key]?._id ?? "") !== String(cond.$eq)) return false;
+          if (String(elem[key] ?? elem[key]?._id ?? "") !== String(cond.$eq))
+            return false;
           continue;
         }
         if (cond.$lt !== undefined) {
@@ -149,7 +178,9 @@ async function updatePaidInUpdate(next) {
       ? update.$set.paymentHistory.slice()
       : simulated;
   } else if (update.paymentHistory !== undefined) {
-    simulated = Array.isArray(update.paymentHistory) ? update.paymentHistory.slice() : simulated;
+    simulated = Array.isArray(update.paymentHistory)
+      ? update.paymentHistory.slice()
+      : simulated;
   } else {
     // 2) Aplicar $pull primeiro (baseado no array atual)
     if (update.$pull && update.$pull.paymentHistory) {
@@ -161,12 +192,19 @@ async function updatePaidInUpdate(next) {
     if (update.$addToSet && update.$addToSet.paymentHistory) {
       const toAdd = update.$addToSet.paymentHistory;
       // se é $each dentro de addToSet, top-level could be array; handle both
-      const items = Array.isArray(toAdd.$each ? toAdd.$each : toAdd) ? (toAdd.$each || toAdd) : [toAdd];
+      const items = Array.isArray(toAdd.$each ? toAdd.$each : toAdd)
+        ? toAdd.$each || toAdd
+        : [toAdd];
       for (const item of items) {
         // add only if not exists by _id or deep equality on value+date
-        const exists = simulated.some((s) =>
-          (s._id && item._id && String(s._id) === String(item._id)) ||
-          (s.date && item.date && String(new Date(s.date).toISOString()) === String(new Date(item.date).toISOString()) && Number(s.value) === Number(item.value))
+        const exists = simulated.some(
+          (s) =>
+            (s._id && item._id && String(s._id) === String(item._id)) ||
+            (s.date &&
+              item.date &&
+              String(new Date(s.date).toISOString()) ===
+                String(new Date(item.date).toISOString()) &&
+              Number(s.value) === Number(item.value))
         );
         if (!exists) simulated.push(item);
       }
@@ -191,12 +229,15 @@ async function updatePaidInUpdate(next) {
   if (update.price != null) price = update.price;
   else if (update.$set && update.$set.price != null) price = update.$set.price;
   else if (update.totalAmount != null) price = update.totalAmount;
-  else if (update.$set && update.$set.totalAmount != null) price = update.$set.totalAmount;
+  else if (update.$set && update.$set.totalAmount != null)
+    price = update.$set.totalAmount;
   else if (doc) {
     price = doc.price ?? doc.totalAmount ?? 0;
     if (update.$inc) {
-      if (update.$inc.price != null) price = (price || 0) + Number(update.$inc.price);
-      if (update.$inc.totalAmount != null) price = (price || 0) + Number(update.$inc.totalAmount);
+      if (update.$inc.price != null)
+        price = (price || 0) + Number(update.$inc.price);
+      if (update.$inc.totalAmount != null)
+        price = (price || 0) + Number(update.$inc.totalAmount);
     }
   } else {
     price = 0;

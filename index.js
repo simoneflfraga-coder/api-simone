@@ -19,7 +19,7 @@ const app = express();
 const port = process.env.PORT || 1354;
 
 const corsOptions = {
-  origin: "https://app-sistema.vercel.app",
+  origin: "http://localhost:8080",
   credentials: true,
 };
 

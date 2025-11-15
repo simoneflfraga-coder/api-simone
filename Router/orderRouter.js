@@ -37,6 +37,9 @@ Router.post("/create", async (req, res) => {
       installmentsTotal,
       installmentsPaid,
       paid,
+      parcelas,
+      installments,
+      vendedora,
     } = req.body;
 
     // Validar e atualizar o estoque
@@ -62,6 +65,14 @@ Router.post("/create", async (req, res) => {
       await product.save({ session });
     }
 
+    // Formatar as parcelas (caso o frontend envie apenas datas e valores)
+    const formattedInstallments = (installments || []).map((p, index) => ({
+      number: p.number || index + 1,
+      dueDate: new Date(p.dueDate),
+      amount: p.amount,
+      status: p.status || "pendente",
+    }));
+
     // Criar o pedido
     const newOrder = await connection.ordersConnection.create(
       [
@@ -73,6 +84,9 @@ Router.post("/create", async (req, res) => {
           installmentsTotal,
           installmentsPaid,
           paid,
+          parcelas,
+          installments: formattedInstallments,
+          vendedora,
         },
       ],
       { session }
@@ -150,14 +164,20 @@ Router.post("/:id/payment", async (req, res) => {
     if (value == null) {
       await session.abortTransaction();
       session.endSession();
-      return res.status(400).json({ error: "Campo 'value' é obrigatório (em centavos)." });
+      return res
+        .status(400)
+        .json({ error: "Campo 'value' é obrigatório (em centavos)." });
     }
 
     const numericValue = Number(value);
     if (!Number.isInteger(numericValue) || numericValue <= 0) {
       await session.abortTransaction();
       session.endSession();
-      return res.status(400).json({ error: "Campo 'value' inválido. Deve ser inteiro > 0 (centavos)." });
+      return res
+        .status(400)
+        .json({
+          error: "Campo 'value' inválido. Deve ser inteiro > 0 (centavos).",
+        });
     }
 
     const payment = {
@@ -166,7 +186,9 @@ Router.post("/:id/payment", async (req, res) => {
     };
 
     // 1) Buscar pedido dentro da sessão
-    const order = await connection.ordersConnection.findById(id).session(session);
+    const order = await connection.ordersConnection
+      .findById(id)
+      .session(session);
     if (!order) {
       await session.abortTransaction();
       session.endSession();
@@ -175,16 +197,22 @@ Router.post("/:id/payment", async (req, res) => {
 
     // 2) Adicionar pagamento no array e salvar (dispara pre('save') do schema)
     order.paymentHistory.push(payment);
+    order.parcelasPagas = (order.parcelasPagas || 0) + 1; // (incrementa +1)
     await order.save({ session, runValidators: true });
 
     // Pega o payment recém-criado (agora tem _id)
     const savedPayment = order.paymentHistory[order.paymentHistory.length - 1];
-    const paymentId = savedPayment && savedPayment._id ? String(savedPayment._id) : null;
+    const paymentId =
+      savedPayment && savedPayment._id ? String(savedPayment._id) : null;
 
     // 3) Atualizar Financials (documento singleton) dentro da mesma sessão
-    let financials = await connection.financialsConnection.findOne({}).session(session);
+    let financials = await connection.financialsConnection
+      .findOne({})
+      .session(session);
     if (!financials) {
-      const created = await connection.financialsConnection.create([{}], { session });
+      const created = await connection.financialsConnection.create([{}], {
+        session,
+      });
       financials = created[0];
     }
 
@@ -201,8 +229,8 @@ Router.post("/:id/payment", async (req, res) => {
       type: "In",
       value: numericValue,
       category: "venda",
-      paymentId: paymentId,          // <-- link direto
-      orderId: String(order._id),    // <-- opcional: bom para auditoria
+      paymentId: paymentId, // <-- link direto
+      orderId: String(order._id), // <-- opcional: bom para auditoria
       description: `Pagamento do pedido ${nameCustomer || String(order._id)}`,
       createAt: new Date(),
     };
@@ -210,7 +238,9 @@ Router.post("/:id/payment", async (req, res) => {
     // console.log(paymentId);
     // console.log(order._id);
 
-    await connection.registrationsConnection.create([registration], { session });
+    await connection.registrationsConnection.create([registration], {
+      session,
+    });
 
     // 5) Commit
     await session.commitTransaction();
@@ -220,12 +250,17 @@ Router.post("/:id/payment", async (req, res) => {
     return res.json({ order: updatedOrder });
   } catch (err) {
     console.error("Erro em /:id/payment transacional:", err);
-    try { await session.abortTransaction(); } catch (e) { console.error("Erro abortTransaction:", e); }
+    try {
+      await session.abortTransaction();
+    } catch (e) {
+      console.error("Erro abortTransaction:", e);
+    }
     session.endSession();
-    return res.status(500).json({ error: err.message || "Erro ao processar pagamento" });
+    return res
+      .status(500)
+      .json({ error: err.message || "Erro ao processar pagamento" });
   }
 });
-
 
 /**
  * REMOVER pagamento do pedido
@@ -241,14 +276,19 @@ Router.delete("/:id/payment/:paymentId", async (req, res) => {
     const { id, paymentId } = req.params;
 
     // validação simples dos ids
-    if (!mongoose.Types.ObjectId.isValid(id) || !mongoose.Types.ObjectId.isValid(paymentId)) {
+    if (
+      !mongoose.Types.ObjectId.isValid(id) ||
+      !mongoose.Types.ObjectId.isValid(paymentId)
+    ) {
       await session.abortTransaction();
       session.endSession();
       return res.status(400).json({ error: "orderId ou paymentId inválido" });
     }
 
     // 1) Buscar pedido com sessão (precisamos do pagamento para saber o valor)
-    const order = await connection.ordersConnection.findById(id).session(session);
+    const order = await connection.ordersConnection
+      .findById(id)
+      .session(session);
     if (!order) {
       await session.abortTransaction();
       session.endSession();
@@ -261,7 +301,9 @@ Router.delete("/:id/payment/:paymentId", async (req, res) => {
     if (!payment) {
       await session.abortTransaction();
       session.endSession();
-      return res.status(404).json({ error: "Pagamento não encontrado no pedido" });
+      return res
+        .status(404)
+        .json({ error: "Pagamento não encontrado no pedido" });
     }
 
     const paymentValue = Number(payment.value || 0);
@@ -292,17 +334,20 @@ Router.delete("/:id/payment/:paymentId", async (req, res) => {
       console.error("Erro ao deletar registration:", regErr);
       await session.abortTransaction();
       session.endSession();
-      return res.status(500).json({ error: "Erro ao deletar registro financeiro" });
+      return res
+        .status(500)
+        .json({ error: "Erro ao deletar registro financeiro" });
     }
 
     // 5) Atualizar financials (subtrair cashInflow e current)
     // Usa upsert:true para criar se não existir (opcional — ajuste se preferir abortar)
     try {
-      const updatedFinancials = await connection.financialsConnection.findOneAndUpdate(
-        {},
-        { $inc: { cashInflow: -paymentValue, current: -paymentValue } },
-        { new: true, upsert: false, session }
-      );
+      const updatedFinancials =
+        await connection.financialsConnection.findOneAndUpdate(
+          {},
+          { $inc: { cashInflow: -paymentValue, current: -paymentValue } },
+          { new: true, upsert: false, session }
+        );
 
       if (!updatedFinancials) {
         // se por algum motivo não retornou documento, aborta
@@ -332,9 +377,10 @@ Router.delete("/:id/payment/:paymentId", async (req, res) => {
       console.error("Erro abortTransaction:", e);
     }
     session.endSession();
-    return res.status(500).json({ error: err.message || "Erro ao remover pagamento" });
+    return res
+      .status(500)
+      .json({ error: err.message || "Erro ao remover pagamento" });
   }
 });
-
 
 module.exports = Router;
